@@ -1,0 +1,106 @@
+Mother, take a gander
+At this sandcastle in the sand
+Great and mighty power
+Made by my own two dry hands
+Governed by unity
+Autonomy and liberty
+It shall live forever
+Even when kicked over.
+
+
+Ren'eon maka'eot goge'aeng'eon zakanin ae zafenin rebika ae chini. Ge'aeng'eon hwika ae hwinika, we'o to'eung'eon hwira'eom lahwen.
+
+人ㄴ언 萬凵얻 工給앵언 般凵守ㄴ &  般株守ㄴ 人光凵 & 耗守. 給앵언 考凵 & 考守凵, 有오 交응언 考物엄 愛世ㄴ
+
+
+
+
+
+Absolutely, I'd be happy to help you understand Dijkstra's algorithm! It's a classic algorithm used to find the shortest path between nodes in a graph, which may represent, for example, road networks. Here's a step-by-step guide to solving it:
+
+Step-by-Step Guide to Dijkstra's Algorithm
+
+Initialization:
+
+Start with a graph with nodes and weighted edges.
+Set the initial node's distance to 0 and all other nodes' distances to infinity.
+Mark all nodes as unvisited. Create a set of all the unvisited nodes called the unvisited set.
+
+Visit the Node with the Smallest Distance:
+
+Select the unvisited node with the smallest distance (initially, this will be the starting node).
+For the current node, consider all of its unvisited neighbors and calculate their tentative distances through the current node. Compare the newly calculated tentative distance to the current assigned value and assign the smaller one.
+For example, if the current node ( A ) has a distance of 6, and an edge from ( A ) to ( B ) has a weight of 2, then the distance to ( B ) through ( A ) will be ( 6 + 2 = 8 ). If ( B ) was previously marked with a distance greater than 8, update it to 8.
+
+Mark the Current Node as Visited:
+
+Once all neighbors of the current node have been considered, mark the current node as visited. A visited node will not be checked again.
+
+Repeat:
+
+Repeat steps 2 and 3 until all nodes have been visited. The algorithm will end when the destination node has been marked visited (if you are only interested in the shortest path to a specific node) or when the smallest tentative distance among the unvisited nodes is infinity (which happens when there is no connection between the initial node and remaining unvisited nodes).
+
+Construct the Shortest Path:
+
+To find the shortest path, you can backtrack from the destination node to the starting node using the recorded distances.
+Example in Pseudocode
+function Dijkstra(Graph, source):
+    dist[source] ← 0
+    for each vertex v in Graph:
+        if v ≠ source:
+            dist[v] ← infinity
+        add v to Q
+    while Q is not empty:
+        u ← vertex in Q with min dist[u]
+        remove u from Q
+        for each neighbor v of u:
+            alt ← dist[u] + length(u, v)
+            if alt < dist[v]:
+                dist[v] ← alt
+                prev[v] ← u
+    return dist[], prev[]
+
+Example in Python
+
+Here's a simple implementation in Python:
+
+import heapq
+
+def dijkstra(graph, start):
+    # Priority queue to store (distance, vertex)
+    pq = [(0, start)]
+    distances = {vertex: float('infinity') for vertex in graph}
+    distances[start] = 0
+    visited = set()
+
+    while pq:
+        current_distance, current_vertex = heapq.heappop(pq)
+
+        if current_vertex in visited:
+            continue
+
+        visited.add(current_vertex)
+
+        for neighbor, weight in graph[current_vertex].items():
+            distance = current_distance + weight
+
+            if distance < distances[neighbor]:
+                distances[neighbor] = distance
+                heapq.heappush(pq, (distance, neighbor))
+
+    return distances
+
+# Example usage:
+graph = {
+    'A': {'B': 1, 'C': 4},
+    'B': {'A': 1, 'C': 2, 'D': 5},
+    'C': {'A': 4, 'B': 2, 'D': 1},
+    'D': {'B': 5, 'C': 1}
+}
+
+print(dijkstra(graph, 'A'))
+
+
+This code will output the shortest distances from the starting node 'A' to all other nodes in the graph.
+
+I hope this helps! If you have any more questions or need further clarification, feel free to ask.

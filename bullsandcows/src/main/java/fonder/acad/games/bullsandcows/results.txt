@@ -1,0 +1,39 @@
+Matt's Bulls and Cows Game!
+Created 2025. Released under the terms of the data privacy guidelines of the University of Santo Tomas (Do not redistribute!)
+
+Game results receipt
+Session no. 025w15-196251b36f5
+
+Your secret code against the computer was 1984.
+The computer's secret code against you was 1367.
+==================================================
+--------------------------------------------------
+Turn 1:
+You submitted 1234, which revealed 1 bull and 1 cow.
+The computer submitted 2486, which revealed 1 bull and 1 cow.
+--------------------------------------------------
+Turn 2:
+You submitted 1342, which revealed 2 bulls and no cows.
+The computer submitted 2831, which revealed no bulls and 2 cows.
+--------------------------------------------------
+Turn 3:
+You submitted 1432, which revealed 1 bull and 1 cow.
+The computer submitted 4581, which revealed 1 bull and 2 cows.
+--------------------------------------------------
+Turn 4:
+You submitted 6471, which revealed no bulls and 3 cows.
+The computer submitted 0483, which revealed 1 bull and 1 cow.
+--------------------------------------------------
+Turn 5:
+You submitted 8746, which revealed no bulls and 2 cows.
+The computer submitted 9481, which revealed 1 bull and 3 cows.
+--------------------------------------------------
+Turn 6:
+You submitted 1642, which revealed 1 bull and 1 cow.
+The computer submitted 4981, which revealed 2 bulls and 2 cows.
+--------------------------------------------------
+Turn 7:
+You submitted 1347, which revealed 3 bulls and no cows.
+The computer submitted 0984, which revealed 3 bulls and no cows.
+==================================================
+Neither you nor the computer cracked the code successfully. (._.)

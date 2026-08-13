@@ -1,0 +1,458 @@
+================================================================================
+NEUPLAN
+================================================================================
+        
+       /*  this function should work this way, based on how I play this game:
+        * 
+        *  the ruleset is {0,1,2,3,4,5,6,7,8,9}, len = 4.
+        *  ex. the code is 1234
+        *  1. computer guesses 1254
+        *  >> 3 bulls, 0 cows <- here, the computer makes note that three of all
+        *                        four could be bulls already, and it raises a
+        *                        mid-state flag for these characters, including
+        *                        5, upon which the computer will stand corrected
+        *                        as demonstrated below.
+        *  2. computer guesses 3174
+        *  >> 1 bull, 2 cows <- here, the computer should backtrack to the previous
+        *                       guess, recognise that 3 is cattle as 2 was removed
+        *                       and that brought down the cow count but 5's
+        *                       removal did not affect the total count (as that
+        *                       would imply that the first one was a perfect
+        *                       guess). Knowing this, the computer will never use
+        *                       3 in this position again, but may reuse it some-
+        *                       where else, if "the computer should never make
+        *                       the same guess twice" meant by character instead
+        *                       of as a whole. The removal of 5 not affecting the
+        *                       total count blacklists that character altogether.
+        *  3. computer guesses 6312
+        *  >> 0 bulls, 3 cows <- here, the computer should recognise that 3 is
+        *                        still in the incorrect location as that did not
+        *                        increase the bulls count. 3 in that position is
+        *                        blacklisted. The removal of 7 not affecting the
+        *                        total count blacklists that character altogether.
+        *                        The same should happen for 1 and 2 in this case.
+        *  4. computer guesses 9231
+        *  >> 2 bulls, 1 cow <- here, the computer then confirms 2 is now in its
+        *                       correct position, then in essence locks it in
+        *                       place, so is 3. 1 is still in the incorrect
+        *                       position; it in that position is blacklisted.
+        *                       The removal of 6 not affecting the total count
+        *                       blacklists that character altogether.
+        *  5. computer guesses 1230
+        *  >> 3 bulls, 0 cows <- here, the computer is now sure that 1 is in its
+        *                        correct position. In this ruleset, 4 and 8 are
+        *                        the remaining characters.
+        *  6. computer guesses 1238
+        *  >> 3 bulls, 0 cows <- here, the cow count did not change. 8 is discarded.
+        *  7. computer guesses 1234
+        *  >> 4 bulls, 0 cows <- The computer wins by the skin of its teeth.
+        * 
+        *  mean case where computer pulls numbers right out of its ass.
+        *  1. computer guesses 9653
+        *  >> 0 bulls, 1 cow <- Here, the computer can't even begin to know which
+        *                       one is the cow here.
+        *  2. computer guesses 0135
+        *  >> 0 bulls, 2 cows <- Computer still has no idea, but also still doesn't
+        *                        blacklist anything. Blacklisting only starts when
+        *                        a bull is declared. However, it does notice that
+        *                        the cow count increased, but as there are two new
+        *                        different characters, this is still uncertain.
+        *  3. computer guesses 4826
+        *  >> 0 bulls, 2 cows <- Still has no idea, still no blacklist. The cow
+        *                        count remains the same, but as this is a completely
+        *                        new set of characters apart from 6, the computer
+        *                        still has no idea.
+        *  4. computer guesses 0952
+        *  >> 0 bulls, 1 cow <- Here, the computer notices that removing 4 makes
+        *                       the cow count go down. 4 is now in the must-generate
+        *                       queue.
+        *  5. computer guesses 6184
+        *  >> 1 bull, 1 cow <- Here, the computer then notices that a bull has been 
+        *                      invoked, but as 1 is also introduced, 4 is still
+        *                      an uncertainty. 2 is also not seen as a must-gen
+        *                      for this reason.
+        *  6. computer guesses 3416
+        *  >> 0 bulls, 3 cows <- Moving the 4 brings down the bull count to zero.
+        *                        4's final position is now confirmed...if only
+        *                        the computer can make it to the end.
+        *  7. computer guesses 3124
+        *  >> 1 bull, 3 cows <- Terrible luck! Here, the computer runs out of moves
+        *                       and is then presented with this information. The
+        *                       computer loses.
+        * 
+        *  arguably, the "hard" difficulty version of this is if the computer
+        *  literally cheated by knowing beforehand which characters appear.
+        */
+
+
+--------------------
+Old remember code
+--------------------
+
+        int bullAssumptions = result.item1, cowAssumptions = result.item2;
+        
+        if (code.matches("^["+this.oldCode+"]$")) this.attemptsWithSameCharacters++;
+        
+        // first time. this is always run on the first turn.
+        if (this.oldCode == null)
+        {
+            for (char c: code.toCharArray())
+            {
+                Cattle bab = new Cattle(c);
+                if (result.item1>0) bab.makeSteer();
+                else if (result.item2>0) bab.makeHeifer();
+                bab.setRecentUsage(turnCount);
+                memory.add(bab);
+            }
+            
+            return;
+        }
+        
+        // succeeding checks. if there are no new characters, this is technically ignored
+        for (char c : code.toCharArray())
+            if (this.oldCode.indexOf(c) == -1 && !memory.contains(new Cattle(c)))
+            {
+                Cattle bab = new Cattle(c);
+                if (result.item1>0) bab.makeSteer();
+                else if (result.item2>0) bab.makeHeifer();
+                memory.add(bab);
+            }
+        
+        // when a character is removed
+        for (char c : this.oldCode.toCharArray()) if (code.indexOf(c) == -1)
+        {
+            Cattle capture = memory.get(memory.indexOf(new Cattle(c)));
+            /* CASE A0 */
+            // the computer detects that removing a character decreases the bull
+            // count. the computer then compares the previous code with
+            // the current, looks for the character that ceases to exist, then
+            // promotes that to a bull and saves its location.
+            // ex. 1254 -> 1354 === 3A0B -> 2A1B
+            //     2 is made bull
+            if (result.item1<this.previous.item1&&bullAssumptions>0)
+            {
+                capture.makeBull(); capture.setLocation(this.codeHistory.get(turnCount-1).indexOf(c));
+                bullAssumptions--;
+            }
+            /* CASE A1 */
+            // the computer detects that removing a character decreases the bulls
+            // and cows count. the computer then compares the previous code with
+            // the current, looks for the character that ceases to exist, then
+            // promotes that to a cow and blacklists its current location.
+            // ex. 1354 -> 1654 === 2A1B -> 2A0B
+            //     3's location there is blacklisted
+            else if (result.sum()<this.previous.sum()&&cowAssumptions>0)
+            {
+                capture.makeCow(); capture.blacklist(this.oldCode.indexOf(c));
+                cowAssumptions--;
+            }
+            /* CASE A2 */
+            // the computer detects that removing a character does not decrease
+            // the bulls and cows count. this character is hereby blacklisted.
+            // ex. 1654 -> 1754 === 2A0B -> 2A0B
+            //     6 is blacklisted
+            else if (result.sum()==this.previous.sum()) capture.blacklist();
+        }
+        
+        // when a character is introduced
+        for (char c : code.toCharArray()) if (this.oldCode.indexOf(c) == -1)
+        {
+            Cattle capture = memory.get(memory.indexOf(new Cattle(c)));
+            /* CASE B0 */
+            // the computer detects that introducing a character increases the
+            // bull count. the computer then compares the previous code with
+            // the current, looks for the character that comes to exist, then
+            // promotes that to a bull and saves its original location immediately. If
+            // it appears for the first time, the computer merely assumes it
+            // could be one but is not a cow, then temporarily stores its current
+            // location for comparison.
+            // ex. 1754 -> 1254 === 2A0B -> 3A0B
+            //     2 is made bull
+            if (result.item1>this.previous.item1&&bullAssumptions>0)
+            {
+                if (capture.isSteer()) { capture.makeBull(); recall(capture); bullAssumptions--;}
+                else capture.makeSteer(); capture.setLocation(code.indexOf(c));
+            }
+            /* CASE B1 */
+            // the computer detects that introducing a character increases the bulls
+            // and cows count. this character is promoted to a cow and its current
+            // location blacklisted. If it appears for the first time, the computer
+            // assumes it could be a cow.
+            // ex. 1754 -> 1354 === 2A0B -> 2A1B
+            //     3's location there is blacklisted
+            else if (result.sum()>this.previous.sum()&&cowAssumptions>0)
+            {
+                capture.makeHeifer(); capture.blacklist(code.indexOf(c));
+                cowAssumptions--;
+            }
+            /* CASE B2 */
+            // the computer detects that introducing a character does not increase
+            // the bulls and cows count. this character is hereby blacklisted.
+            // ex. 1654 -> 1754 === 2A0B -> 2A0B
+            //     7 is blacklisted
+            else if (result.sum()==this.previous.sum()) capture.blacklist();
+        }
+        
+        // when a character already exists
+        for (char c : code.toCharArray()) if (this.oldCode.indexOf(c) != -1)
+        {
+            Cattle capture = memory.get(memory.indexOf(new Cattle(c)));
+            // if the character is already a bull, do not touch them
+            
+            if (capture.isBull()) continue;
+            
+            /* CASE C0 */
+            // the computer detects that moving a character increases the
+            // bull count. this character is promoted to a bull and its current
+            // location saved.
+            // ex. 1354 -> 1534 === 2A1B -> 3A0B
+            //     3 is now fixed in its final position and made bull
+            if (result.item1>this.previous.item1&&bullAssumptions>0)
+            {
+                capture.makeBull(); capture.setLocation(code.indexOf(c));
+                bullAssumptions--;
+            }
+            /* CASE C1 */
+            // the computer detects that moving a character decreases the
+            // bull count. this character's new location is blacklisted, and
+            // the character's old location is saved and the char made bull.
+            // ex. 1534 -> 1354 === 3A0B -> 2A1B
+            //     3 is now fixed in its previous position and made bull
+            else if (result.item1<this.previous.item1&&bullAssumptions>0)
+            {
+                capture.makeBull(); capture.setLocation(this.oldCode.indexOf(c));
+                bullAssumptions--;
+            }
+            /* CASE C2 */
+            // the computer detects that moving a character does not decrease
+            // the bulls and cows count. this character's new position is
+            // hereby blacklisted. if it had appeared previously, it will be
+            // made a cow. if it appears for three times in a row without changing
+            // the bulls and cows count, it will be made an unknown character again.
+            // ex. 2354 -> 2534 === 1A2B -> 1A2B
+            //     3's location there is blacklisted
+            else if (result.sum()==this.previous.sum()&&cowAssumptions>0)
+            {
+                if (capture.isHeifer() && attemptsWithSameCharacters==0) { capture.makeCow(); }
+                else capture.makeHeifer(); if (attemptsWithSameCharacters==4) capture.reset();
+                else cowAssumptions--; capture.blacklist(code.indexOf(c));
+            }
+        }
+        
+        if (attemptsWithSameCharacters==4) attemptsWithSameCharacters = 0;
+
+--------------------
+Old generation code
+--------------------
+
+        
+        ArrayList<Cattle> blacklisted = new ArrayList<>(),
+                          insertHighPriority = new ArrayList<>(),
+                          insertMidPriority = new ArrayList<>(memory),
+                          insertLowPriority = new ArrayList<>();
+        Cattle[] mustInsert = new Cattle[4]; // there should only be up to n bulls
+        
+        // if items don't exist yet, retrieve from initialMemory.
+        // do NOT combine the two, as Cattle->equals() only checks for
+        // the character itself and not its status...
+        for (Cattle c : initialMemory.toArray(Cattle[]::new))  
+            if (!insertMidPriority.contains(c)) insertLowPriority.add(c);
+        
+        for (Cattle c : memory.toArray(Cattle[]::new))
+        {
+            if (c.isSteer()&&!insertMidPriority.contains(c)) insertHighPriority.add(c);
+            if (c.isHeifer()&&!insertMidPriority.contains(c)) insertMidPriority.add(c);
+            if (c.isBull()) mustInsert[c.getLocation()] = c;
+            if (c.isInactive()) blacklisted.add(c);
+        }
+        insertMidPriority.removeAll(blacklisted); // remove blacklisted characters
+        
+        char[] temp = new char[4];
+        boolean[] stencil = new boolean[] { false, false, false, false };
+        int taken = 4;
+        for (Cattle c: mustInsert) // place the must-inserts
+        {
+            if (c == null) continue;
+            
+            int loc = c.getLocation();
+            temp[loc] = c.getValue();
+            stencil[loc] = true; taken--;
+        }
+        while (taken != 0) // place the rest
+        {
+            int indx = 0, status = 0; Cattle chosen = null;
+            while (chosen == null)
+            {
+                if (!insertHighPriority.isEmpty())
+                {
+                    if (randomiser.nextInt(0,3)>=1)
+                    {
+                        indx = randomiser.nextInt(0,insertHighPriority.size());
+                        chosen = insertHighPriority.get(indx);
+                        status = 2;
+                    }
+                    else if (!insertLowPriority.isEmpty())
+                    {
+                        indx = randomiser.nextInt(0,insertLowPriority.size());
+                        chosen = insertLowPriority.get(indx);    
+                        status = 0;
+                    }
+                    else if (!insertMidPriority.isEmpty()&&randomiser.nextInt(0,3)>=1)
+                    {
+                        indx = randomiser.nextInt(0,insertMidPriority.size());
+                        chosen = insertMidPriority.get(indx);    
+                        status = 1;
+                    }
+                }
+                else if (!insertLowPriority.isEmpty())
+                {
+                    indx = randomiser.nextInt(0,insertLowPriority.size());
+                    chosen = insertLowPriority.get(indx);    
+                    status = 0;
+                }
+                else if (!insertMidPriority.isEmpty()&&randomiser.nextInt(0,3)>=1)
+                {
+                    indx = randomiser.nextInt(0,insertMidPriority.size());
+                    chosen = insertMidPriority.get(indx);    
+                    status = 1;
+                }
+            }
+            int pos = randomiser.nextInt(0,4);
+            
+            if (!stencil[pos])
+            {
+                stencil[pos] = true;
+                temp[pos] = chosen.getValue();
+                taken--;
+                switch (status)
+                {
+                    case 0 -> insertLowPriority.remove(indx);
+                    case 1 -> insertMidPriority.remove(indx);
+                    case 2 -> insertHighPriority.remove(indx);
+                }
+            }
+        }
+
+
+--------------------
+Der Neuplan
+--------------------
+
+===== use char by per char analysis (cheating??) =====
+-> 1234 Q
+1> 1540 1A1B
+2> 0953 0A0B
+v
+
+1xxx = 1A0B => xxxx = 0A0B -----> fix 1 @ [0]
+xxx0 = 0A0B => 0xxx = 0A0B -----> blacklist 0
+-
+x5xx = 0A0B => xx5x = 0A0B -----> blacklist 5
+xxxx = 0A0B => x9xx = 0A0B -----> blacklist 9
+-
+xx4x = 0A1B => xxxx = 0A0B -----> increase priority for 4
+(5 is already blacklisted)
+-
+(0 is already blacklisted)
+xxxx = 0A0B => xxx3 = 0A1B -----> increase priority for 3
+== bulls {1}, cows {3,4}, blacklisted {0,5,9}
+
+3> 1268 2A0B
+v
+(1 is planted here)
+-
+(9 is already blacklisted)
+xxxx = 0A0B => x2xx = 1A0B -----> fix 2 @ [1]
+-
+(5 is already blacklisted)
+xxxx = 0A0B => xx6x = 0A0B -----> blacklist 6
+-
+xxx3 = 0A1B => xxxx = 0A0B -----> blacklist location of 3
+xxxx = 0A0B => xxx8 = 0A0B -----> blacklist 8
+== bulls {1,2}, cows {3,4}, blacklisted {0,5,6,8,9}
+
+4> 1274 3A0B
+v
+(1 is planted here)
+-
+(2 is planted here)
+-
+(6 is already blacklisted)
+xxxx = 0A0B => xx7x = 0A0B -----> blacklist 7
+-
+(8 is already blacklisted)
+xxxx = 0A0B => xxx4 = 1A0B -----> fix 4 @ [3]
+== bulls {1,2,4}, cows {3}, blacklisted {0,5,6,7,8,9}
+
+5> 1234 4A0B
+win!
+
+===== use "two-factor authentication" analysis (cheating but stupider??) =====
+-> 1234 Q
+1> 1540 1A1B
+2> 0953 0A0B
+v
+
+1xxx = 1A0B => xxxx = 0A0B -----> fix 1 @ [0]
+xxx0 = 0A0B => 0xxx = 0A0B -----> arrest 0
+-
+x5xx = 0A0B => xx5x = 0A0B -----> arrest 5
+xxxx = 0A0B => x9xx = 0A0B -----> arrest 9
+-
+xx4x = 0A1B => xxxx = 0A0B -----> increase priority for 4
+(5's state is already checked)
+-
+(0's state is already checked)
+xxxx = 0A0B => xxx3 = 0A1B -----> increase priority for 3
+== bulls {1}, cows {3,4}, arrested {0,5,9}
+// when only arrested, they still have the chance to appear in the next code
+   with the same priority. if they commit the same mistake, only then will they
+   be blacklisted.
+
+
+3> 1268 2A0B
+v
+(1 is planted here)
+-
+x9xx = 0A0B => xxxx = 0A0B -----> blacklist 9
+xxxx = 0A0B => x2xx = 1A0B -----> fix 2 @ [1]
+-
+xx5x = 0A0B => xxxx = 0A0B -----> blacklist 5
+xxxx = 0A0B => xx6x = 0A0B -----> arrest 6
+-
+xxx3 = 0A1B => xxxx = 0A0B -----> nothing happens (3 is still cow)
+xxxx = 0A0B => xxx8 = 0A0B -----> arrest 8
+== bulls {1,2}, cows {3,4}, arrested {6,8}, blacklisted {0,5,9}
+
+4> 1274 3A0B
+v
+(1 is planted here)
+-
+(2 is planted here)
+-
+xx6x = 0A0B => xxxx = 0A0B -----> blacklist 6
+xxxx = 0A0B => xx7x = 0A0B -----> arrest 7
+-
+xxx8 = 0A0B => xxxx = 0A0B -----> blacklist 8
+xxxx = 0A0B => xxx4 = 1A0B -----> fix 4 @ [3]
+== bulls {1,2,4}, cows {3}, arrested {7} blacklisted {0,5,6,8,9}
+
+5> 1234 4A0B
+win!
+// while n is still the same because it uses the same case as in the immediate-
+   arrest version, being arrested does not bar the character from reappearing
+   and thus it can delay the win process.
+  
+   e.g., 1234: 1295, 1208, 1293, 1287, 1246, 1273, 1236, 1234.
+                  1     2     3     4     5     6     7     8
+         if max win = 7, then the computer fucking loses. tough luck
+         possible imm-arr ver:
+               1295, 1208, 1246, 1273, 1234.
+         the time complexity gets worse if the computer gets no bulls nor cows the first try.
+         bull confirmation is also slightly retarded in the 2FA version, also needing two
+         collisions before confirming its existence. this is also the same case with
+         cows.
+               0987, 5609, 8375, 3641, 2183, 1432, 4231, 1234.
+         another way to retard the computer is to make simply moving possible cows
+         not confirming that they're cows. this can delay the win because as merely
+         "possible" cows, priority is still the same as before.
